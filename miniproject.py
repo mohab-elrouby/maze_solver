@@ -13,13 +13,14 @@ WHITE = (255,255,255)
 GREEN = (115, 212, 50)
 RED = (255, 60, 60)
 ORANGE = (255, 190, 60)
+BLUE = (60, 120, 255)
  
 
 mini_maze = open("mini_maze.txt",'r').read().split('\n')
 medium_maze = open("medium_maze.txt",'r').read().split('\n')
 big_maze = open("big_maze.txt",'r').read().split('\n')
 open_maze = open("open_maze.txt",'r').read().split('\n')
-debugging_maze =  open("debugging_maze.txt",'r').read().split('\n')
+debugging_maze =  open("debugging_maze.txt",'r').read().split('\n') #this is a very small maze i created for debbuging purpose
 
 # function to take the user input and create the maze
 def create_maze(maze_file):
@@ -51,33 +52,47 @@ def check_if_split_road(x, y):
         nodesList.append(newCell)
 
 
-myStack = []
-visited = set()
-finalStack = []
+
 
 # recursive implementation of depth first search algorithm 
-def depth_first(maze, x, y, stack, visited, finalStack):    
+def depth_first(maze, x, y, stack, visited, screen): 
+    """first checks if the current cell is not visited before and not a wall
+    and adds it to the stack that holds the possible path"""   
     if((x, y) not in visited and maze[y][x] != '%'):
         stack.append([x, y])
         visited.add((x, y))
-        
-        if(maze[y][x] == '.'):
-            print(stack)
-            for i in stack:
-                finalStack.append(i)
-            return True
 
-        if (maze[y][x] == ' ' or maze[y][x] == 'P'):
-            depth_first(maze, x-1, y, stack, visited, finalStack)#left
-        if (maze[y][x] == ' ' or maze[y][x] == 'P'):
-            depth_first(maze, x+1, y, stack, visited, finalStack)#right
-        if (maze[y][x] == ' ' or maze[y][x] == 'P'):
-            depth_first(maze, x, y+1,  stack, visited, finalStack)#bottom
-        if (maze[y][x] == ' ' or maze[y][x] == 'P'):
-            depth_first(maze, x, y-1, stack, visited, finalStack)#top
-        
+        """the terminating condition of the recursive function, if we reached the end
+        return true to end the function after filling the stack"""
+        if(maze[y][x] == '.'):
+            maze[y][x] = "x"
+            draw_board(screen, CELLSIZE=15, board=maze, MARGIN=0)
+            print(stack)
+            return True
+        """the function tries every possible path in the following orientation R-L-B-T,
+        every time the function checks whether we solved the maze or not before it 
+        moves to a new direction"""
+        maze[y][x] = "*"
+        draw_board(screen, CELLSIZE=15, board=maze, MARGIN=0)
+        time.sleep(0.01)
+        isSolved = depth_first(maze, x+1, y, stack, visited, screen)#right
+        if (not isSolved):
+            isSolved = depth_first(maze, x-1, y, stack, visited, screen)#left
+        if (not isSolved):
+            isSolved = depth_first(maze, x, y+1,  stack, visited, screen)#bottom
+        if (not isSolved):
+            isSolved = depth_first(maze, x, y-1, stack, visited, screen)#top
+        if (isSolved):
+            maze[y][x] = "x"
+            draw_board(screen, CELLSIZE=15, board=maze, MARGIN=0)
+            time.sleep(0.05)
+            return True
+        """if the maze is not solved after trying R-L-B-T, 
+        and we reached a dead-end, the function removes the
+        cell from the stack and returns false to trackback to the previous node """
         stack.pop()
         return False
+    return False
 
 
 
@@ -97,24 +112,27 @@ def draw_cell(screen, CELLSIZE, MARGIN, row, column, color):
                             CELLSIZE])
 
 
+# function to draw a gui using pygame library
 def draw_board(screen, CELLSIZE, board, MARGIN):
     for row in range(HEIGHT):
         for column in range(WIDTH):
-            color = GREEN
-            if board[row][column] == '%':
+            color = GREY
+            if board[row][column] == '%': # wall
                 color = BLACK
-            elif board[row][column] == ' ':
-                color = GREY
-            elif board[row][column] == '.':
+            elif board[row][column] == 'x': # final path
+                color = GREEN
+            elif board[row][column] == '.': # end position
                 color = ORANGE
-            elif board[row][column] == 'P':
+            elif board[row][column] == 'P': # starting position
                 color = RED
+            elif board[row][column] == '*': # searched area
+                color = BLUE
             draw_cell(screen, CELLSIZE, MARGIN, row, column, color)
     pygame.display.flip()
 
 
 
-maze = create_maze(big_maze)
+maze = create_maze(medium_maze)
 HEIGHT = len(maze)
 WIDTH = len(maze[0])
 
@@ -123,6 +141,9 @@ MARGIN = 0
 screen_height = HEIGHT*(CELLSIZE+MARGIN)
 screen_width = WIDTH*(CELLSIZE+MARGIN)
 size = (screen_width, screen_height)  
+
+myStack = []
+visited = set() 
 
 nodesList = []
 startPosition = []
@@ -151,26 +172,15 @@ for i in nodesList:
 
 show_maze(maze)
 
-print("hi")
-print(depth_first(maze, startPosition[0], startPosition[1], myStack, visited, finalStack))
-print("bye")
-
-show_maze(maze)
-
-print(finalStack)
 print(myStack)
 
-for i in finalStack:
-    x=i[0]
-    y=i[1]
-    maze[y][x] = "x"
-
-maze[startPosition[1]][startPosition[0]] = "P"
-maze[endPosition[1]][endPosition[0]] = "."
-
-show_maze(maze)
 
 while True:
     screen = pygame.display.set_mode(size)
     screen.fill(WHITE)
     draw_board(screen, CELLSIZE, maze, MARGIN)
+    depth_first(maze, startPosition[0], startPosition[1], myStack, visited, screen)
+    maze[startPosition[1]][startPosition[0]] = "P"
+    maze[endPosition[1]][endPosition[0]] = "."
+    draw_board(screen, CELLSIZE, maze, MARGIN)
+
